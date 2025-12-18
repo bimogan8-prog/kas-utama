@@ -7,58 +7,53 @@ export const USERS_DB = [
   { id: 'a1', username: 'Mazkafh', name: 'Admin Mazkafh', role: 'admin', password: 'Azkanibang' }
 ] as const;
 
-const DB_STORAGE_KEY = 'expense_tracker_pro_v1';
+const DB_STORAGE_KEY = 'kas_mazkafh_v2';
 
-// MOCK CLOUD CONFIG (Ganti URL ini dengan API nyata jika sudah punya)
-const CLOUD_API_URL = ''; 
+/** 
+ * KONFIGURASI FIREBASE ONLINE
+ * Ganti URL di bawah dengan URL Firebase Anda untuk mengaktifkan fitur Online penuh.
+ */
+const FIREBASE_DB_URL = 'https://YOUR_PROJECT_ID.firebasedatabase.app/kas_data.json'; 
 
 export const dbStore = {
   get: async (): Promise<Transaction[]> => {
-    // 1. Ambil dari lokal dulu (agar cepat)
-    const localData = localStorage.getItem(DB_STORAGE_KEY);
-    let transactions: Transaction[] = [];
-    
-    if (localData) {
-      try {
-        transactions = JSON.parse(localData);
-      } catch (e) {
-        console.error("Gagal parse data lokal", e);
-      }
-    }
+    // 1. Ambil data lokal dulu (Kecepatan)
+    const local = localStorage.getItem(DB_STORAGE_KEY);
+    let transactions: Transaction[] = local ? JSON.parse(local) : [];
 
-    // 2. Jika ada API URL, coba ambil data terbaru dari internet
-    if (CLOUD_API_URL) {
+    // 2. Jika online, tarik data terbaru dari cloud
+    if (navigator.onLine && !FIREBASE_DB_URL.includes('YOUR_PROJECT_ID')) {
       try {
-        const response = await fetch(CLOUD_API_URL);
-        const cloudData = await response.json();
-        if (Array.isArray(cloudData)) {
-          // Merge data (Logika sederhana: data cloud lebih dipercaya)
-          transactions = cloudData;
-          localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(transactions));
+        const res = await fetch(FIREBASE_DB_URL);
+        if (res.ok) {
+          const cloudData = await res.json();
+          if (cloudData && Array.isArray(cloudData)) {
+            transactions = cloudData;
+            // Update cache lokal
+            localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(transactions));
+          }
         }
       } catch (e) {
-        console.warn("Mode Offline: Gagal mengambil data dari cloud.");
+        console.warn("Cloud offline, using local data.");
       }
     }
-    
     return transactions;
   },
   
   save: async (data: Transaction[]) => {
-    // Simpan lokal dulu
+    // Selalu simpan di lokal (Keamanan Data)
     localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(data));
     
-    // Kirim ke Cloud jika ada API
-    if (CLOUD_API_URL) {
+    // Kirim ke Cloud jika ada internet
+    if (navigator.onLine && !FIREBASE_DB_URL.includes('YOUR_PROJECT_ID')) {
       try {
-        await fetch(CLOUD_API_URL, {
-          method: 'POST',
+        await fetch(FIREBASE_DB_URL, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
-        console.log("Data berhasil disinkronkan ke Cloud.");
       } catch (e) {
-        console.error("Gagal sinkron cloud, data tersimpan secara lokal.");
+        console.error("Gagal sinkron ke Cloud.");
       }
     }
   },
@@ -69,9 +64,8 @@ export const dbStore = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `backup_kas_full_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `backup_kas_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
-    URL.revokeObjectURL(url);
   },
 
   importBackup: async (jsonData: string) => {
@@ -81,7 +75,9 @@ export const dbStore = {
         await dbStore.save(parsed);
         return true;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Import Gagal", e);
+    }
     return false;
   }
 };

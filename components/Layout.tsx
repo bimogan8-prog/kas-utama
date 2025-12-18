@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LogOut, User as UserIcon, Database, Cloud } from 'lucide-react';
+import { LogOut, User as UserIcon, Database, Cloud, WifiOff } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -8,13 +8,14 @@ interface LayoutProps {
   onLogout: () => void;
   children: React.ReactNode;
   title: string;
+  isOnline?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ user, onLogout, children, title }) => {
+const Layout: React.FC<LayoutProps> = ({ user, onLogout, children, title, isOnline = true }) => {
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto bg-gray-50 shadow-2xl relative">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-blue-600 text-white p-5 shadow-lg flex justify-between items-center rounded-b-[2.5rem]">
+      <header className={`sticky top-0 z-50 text-white p-5 shadow-lg flex justify-between items-center rounded-b-[2.5rem] transition-colors duration-500 ${isOnline ? 'bg-blue-600' : 'bg-gray-800'}`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
             <UserIcon size={20} className="text-white" />
@@ -43,14 +44,22 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout, children, title }) => {
 
       {/* Persistent Badge & Info */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[calc(100%-40px)] flex flex-col items-center gap-2 pointer-events-none">
-        <div className="px-5 py-2.5 bg-gray-900/90 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
+        <div className={`px-5 py-2.5 backdrop-blur-md text-white rounded-2xl shadow-2xl border flex items-center gap-3 transition-all duration-500 ${isOnline ? 'bg-gray-900/90 border-white/10' : 'bg-amber-600 border-amber-400'}`}>
           <div className="relative">
-            <Database size={14} className="text-blue-400" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-gray-900"></div>
+            {isOnline ? (
+              <Database size={14} className="text-blue-400" />
+            ) : (
+              <WifiOff size={14} className="text-white animate-pulse" />
+            )}
+            <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-gray-900 ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Database Online</span>
-            <span className="text-[8px] text-gray-400 font-medium">Data tersinkron otomatis antar HP</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              {isOnline ? 'Database Online' : 'Database Lokal'}
+            </span>
+            <span className="text-[8px] opacity-80 font-medium">
+              {isOnline ? 'Data tersinkron otomatis' : 'Koneksi Offline - Simpan di HP'}
+            </span>
           </div>
         </div>
       </div>
