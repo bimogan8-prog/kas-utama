@@ -1,0 +1,5 @@
+{
+  "name": "Mobile Expense Tracker",
+  "description": "A real-time expense tracking system with separate views for workers and administrators. Features category-based logging, automated summaries, and detailed reporting.",
+  "requestFramePermissions": []
+}
