@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kas RASI</string>
+    <string name="title_activity_main">Kas RASI</string>
+    <string name="package_name">com.rasi.app</string>
+    <string name="custom_url_scheme">com.rasi.app</string>
+</resources>
