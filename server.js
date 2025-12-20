@@ -104,26 +104,6 @@ app.get('/stats', (req, res) => {
     });
 });
 
-// 5. Login (Penting untuk Auth Frontend)
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    
-    const USERS = [
-        { id: 'w1', username: 'wirdan', name: 'Wirdan', role: 'worker', password: 'rasau@40' },
-        { id: 'w2', username: 'zulfan', name: 'Zulfan', role: 'worker', password: 'sorek@50' },
-        { id: 'a1', username: 'mazkafh', name: 'Admin Mazkafh', role: 'admin', password: 'admin' }
-    ];
-
-    const user = USERS.find(u => u.username === username && u.password === password);
-    
-    if (user) {
-        const { password, ...userData } = user;
-        res.json(userData);
-    } else {
-        res.status(401).json({ error: "Invalid credentials" });
-    }
-});
-
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Server RASI Finance berjalan stabil di port ${PORT}`);
 });

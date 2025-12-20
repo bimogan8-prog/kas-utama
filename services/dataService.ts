@@ -6,27 +6,30 @@ import { Transaction, User } from '../types';
  */
 const API_BASE_URL = 'http://localhost:3000';
 
+// USER DATA (Client-Side Logic - Tidak perlu DB)
+const LOCAL_USERS = [
+  { id: 'w1', username: 'wirdan', name: 'Wirdan', role: 'worker', password: 'rasau@40' },
+  { id: 'w2', username: 'zulfan', name: 'Zulfan', role: 'worker', password: 'sorek@50' },
+  { id: 'a1', username: 'mazkafh', name: 'Admin Mazkafh', role: 'admin', password: 'admin' }
+];
+
 export const dataService = {
-  // 1. Authenticate (Login) - Endpoint tetap
+  // 1. Authenticate (Login) - STRICTLY CLIENT SIDE (NO FETCH)
   authenticate: async (username: string, password: string): Promise<User | null> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      
-      if (response.ok) {
-        return await response.json();
-      }
-      return null;
-    } catch (error) {
-      console.error("Auth Error:", error);
-      throw error; 
+    // Simulasi delay kecil agar terasa natural
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const user = LOCAL_USERS.find(u => u.username === username && u.password === password);
+    
+    if (user) {
+      // Return user tanpa password
+      const { password: _, ...userData } = user;
+      return userData as User;
     }
+    return null;
   },
 
-  // 2. Get Transactions -> /list-kas
+  // 2. Get Transactions -> /list-kas (TETAP KE DB)
   getTransactions: async (filters: { uid?: string; date?: string; month?: string; year?: string; all?: boolean }): Promise<Transaction[]> => {
     try {
       // Construct Query Params
@@ -62,11 +65,12 @@ export const dataService = {
 
     } catch (error) {
       console.error("Fetch Data Error:", error);
+      // Return empty array on error so app doesn't crash
       return [];
     }
   },
 
-  // 3. Add Transaction -> /tambah-kas
+  // 3. Add Transaction -> /tambah-kas (TETAP KE DB)
   addTransaction: async (transaction: Omit<Transaction, 'id'>): Promise<boolean> => {
     try {
       const payload = {
@@ -93,7 +97,7 @@ export const dataService = {
     }
   },
 
-  // 4. Delete Transaction -> /hapus-kas/:id
+  // 4. Delete Transaction -> /hapus-kas/:id (TETAP KE DB)
   deleteExpense: async (id: string) => {
     try {
       // UPDATE ENDPOINT: /transactions/:id -> /hapus-kas/:id
@@ -107,7 +111,7 @@ export const dataService = {
     }
   },
 
-  // 5. Get Master Stats - Endpoint tetap
+  // 5. Get Master Stats (TETAP KE DB)
   getMasterStats: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/stats`);

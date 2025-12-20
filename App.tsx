@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Transaction } from './types';
 import { dataService } from './services/dataService';
@@ -94,6 +93,7 @@ const App: React.FC = () => {
     setLoginError('');
     setIsLoading(true);
     try {
+      // Login is now Client-Side, no fetch involved here
       const authenticatedUser = await dataService.authenticate(username, password);
       if (authenticatedUser) {
         // Simpan ke state dan localStorage
@@ -103,7 +103,8 @@ const App: React.FC = () => {
         setLoginError('ID atau Password salah.');
       }
     } catch (err) {
-      setLoginError('Gagal terhubung ke Server MySQL.');
+      // Should not happen with local login, but safe to handle
+      setLoginError('Terjadi kesalahan pada aplikasi.');
     } finally {
       setIsLoading(false);
     }

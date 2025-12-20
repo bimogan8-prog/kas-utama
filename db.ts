@@ -1,4 +1,4 @@
-import { Transaction } from './types';
+import { Transaction, User } from './types';
 
 /**
  * CONFIGURASI BACKEND MYSQL
@@ -6,6 +6,13 @@ import { Transaction } from './types';
  * Pastikan backend sudah dijalankan dengan `node server.js`
  */
 const API_BASE_URL = 'http://localhost:3000'; 
+
+// USER DATA LOKAL
+const LOCAL_USERS = [
+  { id: 'w1', username: 'wirdan', name: 'Wirdan', role: 'worker', password: 'rasau@40' },
+  { id: 'w2', username: 'zulfan', name: 'Zulfan', role: 'worker', password: 'sorek@50' },
+  { id: 'a1', username: 'mazkafh', name: 'Admin Mazkafh', role: 'admin', password: 'admin' }
+];
 
 export const dbStore = {
   // Mengambil data dari MySQL
@@ -95,20 +102,15 @@ export const dbStore = {
     }
   },
 
-  // Login
+  // Login (CLIENT SIDE)
   login: async (username: string, password: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      if (response.ok) return await response.json();
-      return null;
-    } catch (error) {
-      console.error("Login API Error:", error);
-      return null;
+    // Tidak menggunakan Fetch ke Server
+    const user = LOCAL_USERS.find(u => u.username === username && u.password === password);
+    if (user) {
+        const { password: _, ...userData } = user;
+        return userData;
     }
+    return null;
   }
 };
 
