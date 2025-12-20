@@ -11,13 +11,13 @@ export interface User {
 export interface Transaction {
   id: string;
   uid: string;
-  nama_user: string;
+  nama_user: string; // Mapping dari kolom 'name' di DB
   kategori: string;
   nominal: number;
   keterangan: string;
-  timestamp: number;
+  timestamp: number; // Disimpan sebagai milliseconds untuk Frontend
   type: TransactionType;
-  notaUrl?: string; // Menambahkan field untuk URL foto nota
+  notaUrl?: string; 
   isSynced?: boolean; 
 }
 
