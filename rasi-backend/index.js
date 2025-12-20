@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Allow all origins for VPS access
+app.use(cors()); // Allow all origins (penting untuk akses dari React Client)
 app.use(bodyParser.json());
 
 // MySQL Connection Pool
@@ -41,7 +41,8 @@ app.get('/transactions', async (req, res) => {
         let query = "SELECT * FROM kas_rasi WHERE 1=1";
         const params = [];
 
-        // Mapping UID to Name
+        // Mapping UID to Name (Logic Backend)
+        // Frontend mengirim 'w1', DB menyimpan 'Wirdan'
         if (uid) {
             if (uid === 'w1') { query += " AND name = ?"; params.push('Wirdan'); }
             else if (uid === 'w2') { query += " AND name = ?"; params.push('Zulfan'); }
@@ -108,7 +109,7 @@ app.delete('/transactions/:id', async (req, res) => {
     }
 });
 
-// 4. GET Statistics (Calculated by Database)
+// 4. GET Statistics
 app.get('/stats', async (req, res) => {
     try {
         const [rows] = await pool.execute(`
@@ -125,7 +126,7 @@ app.get('/stats', async (req, res) => {
     }
 });
 
-// 5. POST Login (Auth)
+// 5. POST Login (Simple Auth)
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     
@@ -145,7 +146,6 @@ app.post('/login', (req, res) => {
     }
 });
 
-// Bind to 0.0.0.0 to allow external access (VPS)
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

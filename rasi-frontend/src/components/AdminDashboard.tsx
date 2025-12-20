@@ -104,6 +104,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ expenses, onDelete, onF
     
     // Normalisasi input tab dan data user ke lowercase agar cocok
     // Contoh: 'Wirdan' akan match dengan 'wirdan', 'WIRDAN', 'Wirdan'
+    // DataService sudah menjamin 'nama_user' terisi dari DB 'name'
     return expenses.filter(e => {
         const userName = e.nama_user ? e.nama_user.toLowerCase() : '';
         return userName.includes(activeTab.toLowerCase());

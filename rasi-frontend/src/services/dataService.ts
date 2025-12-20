@@ -47,10 +47,12 @@ export const dataService = {
       const rawData = await response.json();
 
       // MAPPING DATA: MySQL -> React App
+      // Ini bagian paling penting agar filter di Dashboard Admin (Wirdan vs Zulfan) bekerja
       return rawData.map((item: any) => ({
         id: item.id.toString(),
         uid: item.uid || 'unknown',
-        // Map kolom DB 'name' ke Frontend prop 'nama_user'
+        // Map kolom DB 'name' ke Frontend prop 'nama_user'. 
+        // Backend mengembalikan 'name', Frontend butuh 'nama_user' untuk filter.
         nama_user: item.name || item.nama_user || 'Unknown', 
         type: item.type,
         // Pastikan nominal adalah Angka (bukan string)
@@ -58,7 +60,7 @@ export const dataService = {
         kategori: item.kategori,
         keterangan: item.keterangan,
         notaUrl: item.notaUrl || '',
-        // PENTING: Konversi string timestamp MySQL ke Number (Milliseconds)
+        // PENTING: Konversi string timestamp MySQL (ISO) ke Number (Milliseconds)
         timestamp: new Date(item.timestamp).getTime(),
         isSynced: true
       }));
@@ -74,7 +76,7 @@ export const dataService = {
     try {
       // Map Frontend object -> MySQL Payload
       const payload = {
-        name: transaction.nama_user, // Field DB adalah 'name'
+        name: transaction.nama_user, // Simpan prop 'nama_user' ke kolom DB 'name'
         type: transaction.type,
         nominal: transaction.nominal,
         kategori: transaction.kategori,
