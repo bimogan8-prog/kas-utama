@@ -1,132 +1,110 @@
 require('dotenv').config();
 const express = require('express');
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2'); // Menggunakan mysql2 callback style sesuai request
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors()); // Allow all origins (penting untuk akses dari React Client)
+app.use(cors());
 app.use(bodyParser.json());
 
-// MySQL Connection Pool
+// CONFIGURATION: Gunakan Pool agar koneksi stabil
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'expense_tracker',
+    password: process.env.DB_PASSWORD || 'password_lo',
+    database: process.env.DB_NAME || 'kas_rasi_db',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-// Test Database Connection
-pool.getConnection()
-    .then(conn => {
-        console.log("✅ MySQL Database Connected");
-        conn.release();
-    })
-    .catch(err => {
-        console.error("❌ MySQL Connection Failed:", err);
-    });
-
 // --- API ROUTES ---
 
-// 1. GET List Data (With Filters)
-app.get('/transactions', async (req, res) => {
-    try {
-        const { uid, date, month, year, all } = req.query;
-        let query = "SELECT * FROM kas_rasi WHERE 1=1";
-        const params = [];
+// 1. Ambil Data (List Kas) dengan Filter
+app.get('/list-kas', (req, res) => {
+    const { uid, date, month, year, all } = req.query;
+    let query = "SELECT * FROM kas_rasi WHERE 1=1";
+    const params = [];
 
-        // Mapping UID to Name (Logic Backend)
-        // Frontend mengirim 'w1', DB menyimpan 'Wirdan'
-        if (uid) {
-            if (uid === 'w1') { query += " AND name = ?"; params.push('Wirdan'); }
-            else if (uid === 'w2') { query += " AND name = ?"; params.push('Zulfan'); }
+    // Filter by User (Mapping UID -> Name)
+    if (uid) {
+        if (uid === 'w1') { query += " AND name = ?"; params.push('Wirdan'); }
+        else if (uid === 'w2') { query += " AND name = ?"; params.push('Zulfan'); }
+    }
+
+    // Filter by Time
+    if (!all) {
+        if (date) {
+            query += " AND DATE(timestamp) = ?";
+            params.push(date);
+        } else if (month && year) {
+            query += " AND MONTH(timestamp) = ? AND YEAR(timestamp) = ?";
+            params.push(month, year);
+        } else if (year) {
+            query += " AND YEAR(timestamp) = ?";
+            params.push(year);
         }
+    }
 
-        // Time Filters
-        if (!all) {
-            if (date) {
-                query += " AND DATE(timestamp) = ?";
-                params.push(date);
-            } else if (month && year) {
-                query += " AND MONTH(timestamp) = ? AND YEAR(timestamp) = ?";
-                params.push(month, year);
-            } else if (year) {
-                query += " AND YEAR(timestamp) = ?";
-                params.push(year);
-            }
+    query += " ORDER BY timestamp DESC";
+
+    pool.query(query, params, (err, results) => {
+        if (err) {
+            console.error("Database Error:", err);
+            return res.status(500).json({ error: err.message });
         }
-
-        query += " ORDER BY timestamp DESC";
-
-        const [rows] = await pool.execute(query, params);
-        res.json(rows);
-    } catch (error) {
-        console.error("GET /transactions Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
+        res.json(results);
+    });
 });
 
-// 2. POST Add Data
-app.post('/transactions', async (req, res) => {
-    try {
-        const { name, type, nominal, kategori, keterangan, notaUrl, timestamp } = req.body;
+// 2. Tambah Data
+app.post('/tambah-kas', (req, res) => {
+    const { name, type, nominal, kategori, keterangan, notaUrl, timestamp } = req.body;
+    
+    // Gunakan timestamp dari frontend jika ada (untuk backdate), atau waktu sekarang
+    const ts = timestamp ? new Date(timestamp) : new Date();
 
-        if (!name || !nominal || !type) {
-            return res.status(400).json({ error: "Missing required fields" });
+    const query = 'INSERT INTO kas_rasi (name, type, nominal, kategori, keterangan, notaUrl, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    
+    pool.query(query, [name, type, nominal, kategori, keterangan, notaUrl, ts], (err, result) => {
+        if (err) {
+            console.error("Insert Error:", err);
+            return res.status(500).json({ error: err.message });
         }
-
-        // Use provided timestamp or current time
-        const timeVal = timestamp ? new Date(timestamp) : new Date();
-
-        const query = `
-            INSERT INTO kas_rasi (name, type, nominal, kategori, keterangan, notaUrl, timestamp) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        await pool.execute(query, [name, type, nominal, kategori, keterangan, notaUrl, timeVal]);
-        res.status(201).json({ message: "Transaction saved successfully" });
-    } catch (error) {
-        console.error("POST /transactions Error:", error);
-        res.status(500).json({ error: "Failed to save transaction" });
-    }
+        res.json({ success: true, id: result.insertId });
+    });
 });
 
-// 3. DELETE Data
-app.delete('/transactions/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await pool.execute("DELETE FROM kas_rasi WHERE id = ?", [id]);
-        res.json({ message: "Transaction deleted successfully" });
-    } catch (error) {
-        console.error("DELETE /transactions Error:", error);
-        res.status(500).json({ error: "Failed to delete transaction" });
-    }
+// 3. Hapus Data
+app.delete('/hapus-kas/:id', (req, res) => {
+    const { id } = req.params;
+    pool.query('DELETE FROM kas_rasi WHERE id = ?', [id], (err, result) => {
+        if (err) {
+            console.error("Delete Error:", err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
 });
 
-// 4. GET Statistics
-app.get('/stats', async (req, res) => {
-    try {
-        const [rows] = await pool.execute(`
-            SELECT 
-                COUNT(*) as count, 
-                SUM(CASE WHEN type = 'income' THEN nominal ELSE 0 END) as income,
-                SUM(CASE WHEN type = 'expense' THEN nominal ELSE 0 END) as expense
-            FROM kas_rasi
-        `);
-        res.json(rows[0]);
-    } catch (error) {
-        console.error("GET /stats Error:", error);
-        res.status(500).json({ error: "Failed to calculate stats" });
-    }
+// 4. Statistik (Penting untuk Dashboard Admin)
+app.get('/stats', (req, res) => {
+    pool.query(`
+        SELECT 
+            COUNT(*) as count, 
+            SUM(CASE WHEN type = 'income' THEN nominal ELSE 0 END) as income,
+            SUM(CASE WHEN type = 'expense' THEN nominal ELSE 0 END) as expense
+        FROM kas_rasi
+    `, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results[0]);
+    });
 });
 
-// 5. POST Login (Simple Auth)
+// 5. Login (Penting untuk Auth Frontend)
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     
@@ -147,5 +125,5 @@ app.post('/login', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server RASI Finance berjalan stabil di port ${PORT}`);
 });

@@ -2,12 +2,12 @@ import { Transaction, User } from '../types/types';
 
 /**
  * CONFIGURASI SERVER UTAMA
- * Pastikan ini mengarah ke IP VPS Anda
+ * Gunakan localhost untuk pengembangan lokal
  */
-const API_BASE_URL = 'http://103.185.52.16:3000';
+const API_BASE_URL = 'http://localhost:3000';
 
 export const dataService = {
-  // 1. Authenticate (Login)
+  // 1. Authenticate (Login) - Endpoint tetap
   authenticate: async (username: string, password: string): Promise<User | null> => {
     try {
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -22,11 +22,11 @@ export const dataService = {
       return null;
     } catch (error) {
       console.error("Auth Error:", error);
-      return null;
+      throw error; 
     }
   },
 
-  // 2. Get Transactions (Fetch & Map)
+  // 2. Get Transactions -> /list-kas
   getTransactions: async (filters: { uid?: string; date?: string; month?: string; year?: string; all?: boolean }): Promise<Transaction[]> => {
     try {
       // Construct Query Params
@@ -37,7 +37,8 @@ export const dataService = {
       if (filters.year) params.append('year', filters.year);
       if (filters.all) params.append('all', 'true');
 
-      const response = await fetch(`${API_BASE_URL}/transactions?${params.toString()}`, {
+      // UPDATE ENDPOINT: /transactions -> /list-kas
+      const response = await fetch(`${API_BASE_URL}/list-kas?${params.toString()}`, {
         mode: 'cors',
         headers: { 'Accept': 'application/json' }
       });
@@ -46,21 +47,15 @@ export const dataService = {
       
       const rawData = await response.json();
 
-      // MAPPING DATA: MySQL -> React App
-      // Ini bagian paling penting agar filter di Dashboard Admin (Wirdan vs Zulfan) bekerja
       return rawData.map((item: any) => ({
         id: item.id.toString(),
         uid: item.uid || 'unknown',
-        // Map kolom DB 'name' ke Frontend prop 'nama_user'. 
-        // Backend mengembalikan 'name', Frontend butuh 'nama_user' untuk filter.
         nama_user: item.name || item.nama_user || 'Unknown', 
         type: item.type,
-        // Pastikan nominal adalah Angka (bukan string)
         nominal: Number(item.nominal), 
         kategori: item.kategori,
         keterangan: item.keterangan,
         notaUrl: item.notaUrl || '',
-        // PENTING: Konversi string timestamp MySQL (ISO) ke Number (Milliseconds)
         timestamp: new Date(item.timestamp).getTime(),
         isSynced: true
       }));
@@ -71,22 +66,22 @@ export const dataService = {
     }
   },
 
-  // 3. Add Transaction
+  // 3. Add Transaction -> /tambah-kas
   addTransaction: async (transaction: Omit<Transaction, 'id'>): Promise<boolean> => {
     try {
-      // Map Frontend object -> MySQL Payload
       const payload = {
-        name: transaction.nama_user, // Simpan prop 'nama_user' ke kolom DB 'name'
+        name: transaction.nama_user, 
         type: transaction.type,
         nominal: transaction.nominal,
         kategori: transaction.kategori,
         keterangan: transaction.keterangan,
         notaUrl: transaction.notaUrl || '',
-        // Format date ke string yang aman untuk MySQL
+        // Kirim timestamp agar tanggal pilihan user tersimpan
         timestamp: new Date(transaction.timestamp).toISOString().slice(0, 19).replace('T', ' ')
       };
 
-      const response = await fetch(`${API_BASE_URL}/transactions`, {
+      // UPDATE ENDPOINT: /transactions -> /tambah-kas
+      const response = await fetch(`${API_BASE_URL}/tambah-kas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -98,10 +93,11 @@ export const dataService = {
     }
   },
 
-  // 4. Delete Transaction
+  // 4. Delete Transaction -> /hapus-kas/:id
   deleteExpense: async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+      // UPDATE ENDPOINT: /transactions/:id -> /hapus-kas/:id
+      const response = await fetch(`${API_BASE_URL}/hapus-kas/${id}`, {
         method: 'DELETE'
       });
       return response.ok;
@@ -111,7 +107,7 @@ export const dataService = {
     }
   },
 
-  // 5. Get Master Stats
+  // 5. Get Master Stats - Endpoint tetap
   getMasterStats: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/stats`);
