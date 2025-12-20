@@ -1,4 +1,3 @@
-
 export type UserRole = 'worker' | 'admin';
 export type TransactionType = 'expense' | 'income';
 

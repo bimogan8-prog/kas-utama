@@ -1,5 +1,4 @@
-
-import { Transaction } from './types';
+import { Transaction } from './types/types';
 
 /**
  * CONFIGURASI BACKEND MYSQL

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Clock, Filter, Trash2, Search, ArrowUpCircle, ArrowDownCircle, Wallet, Database, ShieldCheck, FileSpreadsheet } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction } from '../types/types';
 import { dataService } from '../services/dataService';
 
 interface AdminDashboardProps {

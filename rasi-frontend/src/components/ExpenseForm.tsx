@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { PlusCircle, Wallet, Tag, FileText, ArrowUpCircle, ArrowDownCircle, Calendar, Link } from 'lucide-react';
-import { User, TransactionType } from '../types';
+import { User, TransactionType } from '../types/types';
 import { dataService } from '../services/dataService';
 
 interface ExpenseFormProps {

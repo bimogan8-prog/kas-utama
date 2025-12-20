@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Transaction } from './types';
+import { User, Transaction } from './types/types';
 import { dataService } from './services/dataService';
 import Layout from './components/Layout';
 import ExpenseForm from './components/ExpenseForm';

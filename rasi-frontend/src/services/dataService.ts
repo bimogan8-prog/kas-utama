@@ -1,4 +1,4 @@
-import { Transaction, User } from '../types';
+import { Transaction, User } from '../types/types';
 
 /**
  * CONFIGURASI SERVER UTAMA
