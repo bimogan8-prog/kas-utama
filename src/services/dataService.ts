@@ -1,120 +1,110 @@
-import { db } from "../db";
-import { ref, get, child, push, remove, set } from "firebase/database";
+import { db } from '../firebaseConfig';
+import { 
+  ref, 
+  push, 
+  set, 
+  remove, 
+  onValue, 
+  query, 
+  orderByChild,
+  off 
+} from 'firebase/database';
 import { User, Transaction } from "../types";
+import { Unsubscribe } from 'firebase/database';
+
+const dbPath = "transaksi";
 
 export const dataService = {
-  // 1. SYSTEM LOGIN
+  /**
+   * 1. SISTEM AUTHENTICATION (LOKAL)
+   * Memvalidasi user berdasarkan daftar kredensial yang ditentukan.
+   */
   authenticate: (username: string, password: string): User | null => {
     const users = [
-      { id: '1', name: 'Wirdan', username: 'wirdan', password: 'rasau@40', role: 'worker' },
-      { id: '2', name: 'Zulfan', username: 'zulfan', password: 'sorek@50', role: 'worker' },
-      { id: 'admin', name: 'Admin Mazkafh', username: 'mazkafh', password: 'Azkanibang', role: 'admin' }
+      { id: '1', name: 'Wirdan', username: 'wirdan', password: 'rasau@40', role: 'worker' as const },
+      { id: '2', name: 'Zulfan', username: 'zulfan', password: 'sorek@50', role: 'worker' as const },
+      { id: 'admin', name: 'Admin Mazkafh', username: 'mazkafh', password: 'Azkanibang', role: 'admin' as const }
     ];
     
     const found = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
     
     if (found) {
+      // Mengembalikan data user tanpa menyertakan password demi keamanan
       const { password: _, ...userWithoutPassword } = found;
       return userWithoutPassword as User;
     }
     return null;
   },
 
-  // 2. UPLOAD GAMBAR KE CLOUDINARY
-  uploadImage: async (file: File) => {
-    const cloudName = 'dzppwl4q5'; 
-    const uploadPreset = 'kas_upload'; 
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset); 
-
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData
-      });
+  /**
+   * 2. REAL-TIME DATA LISTENER
+   * Berlangganan ke database untuk mendapatkan pembaruan setiap kali ada perubahan data.
+   */
+  subscribeTransactions: (callback: (data: Transaction[]) => void): Unsubscribe => {
+    const transactionsRef = query(ref(db, dbPath), orderByChild('timestamp'));
+    
+    const unsubscribe = onValue(transactionsRef, (snapshot) => {
+      const data: Transaction[] = [];
       
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      return data.secure_url;
+      if (snapshot.exists()) {
+        const snapData = snapshot.val();
+        Object.keys(snapData).forEach((key) => {
+          const val = snapData[key];
+          
+          data.push({
+            id: key,
+            uid: val.uid || "",
+            nama: val.nama || "",
+            type: val.type || "expense",
+            nominal: Number(val.nominal) || 0,
+            kategori: val.kategori || "",
+            keterangan: val.keterangan || "",
+            tanggal: val.tanggal || "",
+            timestamp: val.timestamp || Date.now()
+          });
+        });
+      }
+      
+      callback(data.reverse());
+    });
+    
+    return unsubscribe;
+  },
+
+  /**
+   * 3. TAMBAH TRANSAKSI BARU
+   * Menyimpan data input kas ke Realtime Database.
+   */
+  addTransaction: async (data: Omit<Transaction, 'id'>) => {
+    try {
+      const newListRef = push(ref(db, dbPath));
+      return await set(newListRef, {
+        uid: data.uid,
+        nama: data.nama,
+        type: data.type,
+        nominal: Number(data.nominal),
+        kategori: data.kategori,
+        keterangan: data.keterangan,
+        tanggal: data.tanggal,
+        timestamp: data.timestamp
+      });
     } catch (err) {
-      console.error("Gagal koneksi ke Cloudinary:", err);
+      console.error("Gagal menambahkan transaksi ke RTDB:", err);
       throw err;
     }
   },
 
-  // 3. SIMPAN TRANSAKSI KE FIREBASE
-addTransaction: async (data: Omit<Transaction, 'id'>) => {
-  // Menunjuk ke lokasi 'transactions' di Database lo
-  const transactionsRef = ref(db, 'transactions'); 
-  
-  // push() membuat "ID Unik" otomatis agar data tidak saling tumpang tindih
-  const newRef = push(transactionsRef); 
-  
-  // set() memasukkan data ke dalam ID Unik tersebut
-  return set(newRef, {
-    ...data,
-    name: data.name || 'Anonymous' 
-  });
-},
-
-  // 4. AMBIL DATA DARI FIREBASE (FIXED: Tombol Cari Sekarang Jalan)
-  getTransactions: async (filters: any) => {
-    const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, 'transactions'));
-    
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      let list = Object.keys(data).map(key => ({
-        id: key,
-        ...data[key],
-        name: data[key].name || data[key].nama_user || 'User'
-      }));
-
-      // A. Jika filter "Semua" di klik
-      if (filters.all) return list.sort((a, b) => b.timestamp - a.timestamp);
-
-      // B. Filter berdasarkan User ID (untuk worker)
-      if (filters.uid && filters.uid !== 'admin') {
-        list = list.filter(item => item.uid === filters.uid);
-      }
-      
-      // C. Filter berdasarkan Hari (YYYY-MM-DD)
-      if (filters.date) {
-        list = list.filter(item => {
-           const d = new Date(item.timestamp);
-           const formatted = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-           return formatted === filters.date;
-        });
-      }
-
-      // D. FILTER BULAN & TAHUN (Ini yang bikin tombol Cari Admin Jalan!)
-      if (filters.month && filters.year) {
-        list = list.filter(item => {
-          const d = new Date(item.timestamp);
-          const m = (d.getMonth() + 1).toString();
-          const y = d.getFullYear().toString();
-          return m === filters.month && y === filters.year;
-        });
-      }
-
-      // E. Filter Tahun saja
-      if (filters.year && !filters.month) {
-        list = list.filter(item => {
-          const d = new Date(item.timestamp);
-          return d.getFullYear().toString() === filters.year;
-        });
-      }
-      
-      return list.sort((a, b) => b.timestamp - a.timestamp);
+  /**
+   * 4. HAPUS TRANSAKSI
+   * Menghapus data spesifik berdasarkan ID unik.
+   */
+  deleteTransaction: async (id: string) => {
+    try {
+      const targetRef = ref(db, `${dbPath}/${id}`);
+      return await remove(targetRef);
+    } catch (err) {
+      console.error("Gagal menghapus transaksi dari RTDB:", err);
+      throw err;
     }
-    return [];
-  },
-
-  // 5. HAPUS DATA PERMANEN (FIXED: Pastikan penulisan rapi dalam object)
-  deleteExpense: async (id: string) => {
-    const itemRef = ref(db, `transactions/${id}`);
-    return remove(itemRef);
   }
 };

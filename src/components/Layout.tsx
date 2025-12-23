@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { LogOut, User as UserIcon, Database, Cloud } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { LogOut, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -11,51 +10,99 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ user, onLogout, children, title }) => {
+  const [statusBarHeight, setStatusBarHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    // Detect Android status bar height
+    const checkStatusBar = () => {
+      if (window.AndroidInterface && window.AndroidInterface.getStatusBarHeight) {
+        const height = window.AndroidInterface.getStatusBarHeight();
+        setStatusBarHeight(height);
+      } else {
+        // Fallback for web testing
+        setStatusBarHeight(24);
+      }
+    };
+
+    checkStatusBar();
+
+    // Listen for Android keyboard events
+    const handleResize = () => {
+      const isKeyboard = window.innerHeight < document.documentElement.clientHeight * 0.75;
+      setIsKeyboardVisible(isKeyboard);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto bg-gray-50 shadow-2xl relative">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-blue-600 text-white p-5 shadow-lg flex justify-between items-center rounded-b-[2.5rem]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-            <UserIcon size={20} className="text-white" />
+      {/* Android Status Bar Spacer */}
+      {statusBarHeight > 0 && (
+        <div 
+          style={{ height: `${statusBarHeight}px` }}
+          className="bg-blue-600"
+        />
+      )}
+      
+      {/* Header - Android Optimized */}
+      <header 
+        className={`sticky top-0 z-50 bg-blue-600 text-white shadow-lg flex justify-between items-center rounded-b-[2.5rem] transition-all duration-300 ${
+          isKeyboardVisible ? 'py-2 px-4' : 'p-5'
+        }`}
+        style={{
+          paddingTop: statusBarHeight > 0 ? '1.25rem' : '1.25rem',
+          paddingBottom: isKeyboardVisible ? '0.5rem' : '1.25rem',
+          paddingLeft: isKeyboardVisible ? '1rem' : '1.25rem', 
+          paddingRight: isKeyboardVisible ? '1rem' : '1.25rem'
+        }}
+      >
+        <div className="flex items-center gap-3 flex-1">
+          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md touch-manipulation">
+            <UserIcon size={22} className="text-white" />
           </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight leading-none">{title}</h1>
-            <div className="flex items-center gap-1.5 text-[10px] text-blue-100 font-bold uppercase tracking-wider mt-1 opacity-80">
-               <span>{user.name}</span>
-               <span className="w-1 h-1 bg-blue-300 rounded-full"></span>
-               <span>{user.role}</span>
+          <div className="flex-1 min-w-0">
+            <h1 className={`font-black tracking-tight leading-none text-white ${
+              isKeyboardVisible ? 'text-sm' : 'text-lg'
+            }`}>{title}</h1>
+            <div className="flex items-center gap-1.5 text-[9px] text-blue-100 font-bold uppercase tracking-wider mt-1 opacity-80 truncate">
+               <span className="truncate">{user.name}</span>
+               <span className="w-1 h-1 bg-blue-300 rounded-full flex-shrink-0"></span>
+               <span className="flex-shrink-0">{user.role}</span>
             </div>
           </div>
         </div>
+        
         <button 
           onClick={onLogout}
-          className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-90"
+          className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-90 touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center"
+          aria-label="Logout"
         >
           <LogOut size={20} />
         </button>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-5 pb-24 overflow-y-auto space-y-6">
-        {children}
+      {/* Main Content - Android Optimized */}
+      <main className={`flex-1 overflow-y-auto space-y-6 transition-all duration-300 ${
+        isKeyboardVisible ? 'px-3 pb-3' : 'p-5 pb-10'
+      }`}>
+        <div className="touch-manipulation">
+          {children}
+        </div>
       </main>
 
-      {/* Persistent Badge & Info */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[calc(100%-40px)] flex flex-col items-center gap-2 pointer-events-none">
-        <div className="px-5 py-2.5 bg-gray-900/90 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 flex items-center gap-3">
-          <div className="relative">
-            <Database size={14} className="text-blue-400" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-gray-900"></div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Database Online</span>
-            <span className="text-[8px] text-gray-400 font-medium">Data tersinkron otomatis antar HP</span>
-          </div>
-        </div>
-      </div>
+      {/* Android Gesture Area Protection */}
+      <div className="h-safe-bottom bg-gray-50" />
     </div>
   );
 };
+
+// Android types are imported from src/types/android.d.ts
 
 export default Layout;

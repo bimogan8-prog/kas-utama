@@ -10,11 +10,12 @@ export interface User {
 export interface Transaction {
   id: string;
   uid: string;
-  name: string;
+  nama: string;
   kategori: string;
   nominal: number;
   keterangan: string;
   type: TransactionType;
+  tanggal: string;
   timestamp: number;
-  notaUrl?: string; // TAMBAHKAN BARIS INI
+  notaUrl?: string;
 }

@@ -1,12 +1,11 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mazkafh.kasonline',
-  appName: 'Kas Mazkafh',
+  appId: 'com.mazkafh.kaspekerja',
+  appName: 'Kas Pekerja RASI',
   webDir: 'dist',
   server: {
-    // GANTI dengan link hasil firebase deploy lo
-    url: 'https://kas-pekerja-gw.web.app', 
+    url: 'https://kas-pekerja-gw.web.app/', // Masukkan domain kamu di sini
     cleartext: true
   }
 };
